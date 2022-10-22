@@ -50,8 +50,8 @@ def add_markers(
 
 
 im_ext = 'jpg'
-im_path = Path('/home/francesco/lib/metashape/src/images')
-bundler_out_path = Path('/home/francesco/lib/metashape/src/belpy.out')
+im_path = Path('/home/francesco/lib/metashape/data/images')
+bundler_out_path = Path('/home/francesco/lib/metashape/belpy.out')
 
 X = (49.6488, 192.0875, 71.7466)
 cams = ['IMG_2814', 'IMG_1289']
