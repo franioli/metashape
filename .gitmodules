@@ -1,0 +1,3 @@
+[submodule "thirdparty/metashape"]
+	path = thirdparty/metashape
+	url = git@github.com:ucdavis/metashape.git
