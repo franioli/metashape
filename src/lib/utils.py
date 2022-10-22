@@ -15,10 +15,7 @@ def check_license() -> None:
         )
 
 
-def save_project(
-    document: Metashape.app.document,
-    project_name: str,
-) -> None:
+def save_project(document: Metashape.app.document, project_name: str,) -> None:
     try:
         document.save(project_name)
     except RuntimeError:
@@ -30,18 +27,14 @@ def clear_all_sensors(chunk) -> None:
         chunk.remove(sensor)
 
 
-def create_new_chunk(
-    doc: Metashape.app.document,
-    chunk_name: str = None
-) -> None:
+def create_new_chunk(doc: Metashape.app.document, chunk_name: str = None) -> None:
     chunk = doc.addChunk()
-    if (chunk_name is not None):
+    if chunk_name is not None:
         chunk.label = chunk_name
 
 
 def create_new_project(
-    project_name: str,
-    chunk_name: str = None
+    project_name: str, chunk_name: str = None
 ) -> Metashape.app.document:
 
     doc = Metashape.Document()
@@ -51,31 +44,51 @@ def create_new_project(
     return doc
 
 
-'''Sensors'''
+""" Get objects"""
 
 
-def AddSensor(chunk, fname):
+def get_marker(chunk, label):
+    for marker in chunk.markers:
+        if marker.label == label:
+            return marker
+    return None
+
+
+def get_camera(chunk, label):
+    for camera in chunk.cameras:
+        if camera.label.lower() == label.lower():
+            return camera
+    return None
+
+
+"""Sensors"""
+
+
+def AddSensor(
+    chunk: Metashape.Chunk, fname: str, fix_parameters: bool = True,
+) -> Metashape.Sensor:
     cam_prm = read_opencv_calibration(fname)
     sensor = chunk.addSensor()
     sensor.type = Metashape.Sensor.Type.Frame
-    sensor.fixed = True
-    s = sensor.calibration
-    sensor.width = int()
-    sensor.height = int()
-    s.width = cam_prm['width']
-    s.height = cam_prm['heigth']
-    s.f = cam_prm['f']
-    s.cx = cam_prm['cx']
-    s.cy = cam_prm['cy']
-    s.k1 = cam_prm['k1']
-    s.k2 = cam_prm['k2']
-    s.k3 = cam_prm['k3']
-    s.k4 = cam_prm['k4']
-    s.p1 = cam_prm['p1']
-    s.p2 = cam_prm['p2']
-    s.b1 = cam_prm['b1']
-    s.b2 = cam_prm['b2']
-    sensor.user_calib = s
+    sensor.width = int(cam_prm["width"])
+    sensor.height = int(cam_prm["height"])
+    sensor.fixed = fix_parameters
+
+    usr_cal = sensor.calibration
+    usr_cal.width = cam_prm["width"]
+    usr_cal.height = cam_prm["height"]
+    usr_cal.f = cam_prm["f"]
+    usr_cal.cx = cam_prm["cx"]
+    usr_cal.cy = cam_prm["cy"]
+    usr_cal.k1 = cam_prm["k1"]
+    usr_cal.k2 = cam_prm["k2"]
+    usr_cal.k3 = cam_prm["k3"]
+    usr_cal.k4 = cam_prm["k4"]
+    usr_cal.p1 = cam_prm["p1"]
+    usr_cal.p2 = cam_prm["p2"]
+    usr_cal.b1 = cam_prm["b1"]
+    usr_cal.b2 = cam_prm["b2"]
+    sensor.user_calib = usr_cal
 
     # if (lineList[15].startswith("Master:")):
     #     sensor.fixed_location = False
@@ -96,9 +109,7 @@ def AddSensor(chunk, fname):
     return sensor
 
 
-def read_sensors_data(
-    sensor_list: List[str],
-) -> dict:
+def read_sensors_data(sensor_list: List[str],) -> dict:
 
     sensors = dict()
     doc = Metashape.Document()
@@ -114,26 +125,21 @@ def read_sensors_data(
 
 
 def match_images_sensors(
-    chunk: Metashape.Chunk,
-    sensors: dict,
-    camera_table: dict,
+    chunk: Metashape.Chunk, sensors: dict, camera_table: dict,
 ) -> None:
     for cam in chunk.cameras:
-        label = camera_table[cam.label+'.jpg']
-        id = retrieve_sensor_id_by_label(
-            sensors, label
-        )
+        label = camera_table[cam.label + ".jpg"]
+        id = get_sensor_id_by_label(sensors, label)
         if id is not None:
             CopySensor(cam.sensor, sensors[id])
             print(
-                f'Sensor associated. Camera: {cam.label} -> sensor: {label} {id}')
+                f"Sensor associated. Camera: {cam.label} -> sensor: {label} {id}")
         else:
-            raise Exception('Sensor not found.')
+            raise Exception("Sensor not found.")
 
 
 def CopySensor(
-    s1: Metashape.Sensor,
-    s2: Metashape.Sensor,
+    s1: Metashape.Sensor, s2: Metashape.Sensor,
 ):
     s1.type = s2.type
     s1.fixed = s2.fixed
@@ -154,7 +160,7 @@ def CopySensor(
     c1.p2 = c2.p2
     c1.b1 = c2.b1
     c1.b2 = c2.b2
-    #s1.calibration = c1
+    # s1.calibration = c1
     s1.user_calib = c1
 
     s1.fixed_location = s2.fixed_location
@@ -170,11 +176,29 @@ def CopySensor(
     s1.rotation = s2.rotation
 
 
-def retrieve_sensor_id_by_label(
-    sensors: List[Metashape.Sensor],
-    sensor_label: str,
-) -> int:
+def get_sensor_id_by_label(sensors: List[Metashape.Sensor], sensor_label: str,) -> int:
     for s_id in sensors:
         sensor = sensors[s_id]
         if sensor.label == sensor_label:
             return s_id
+
+''' MISCELLANEOUS
+'''
+
+
+def make_homogeneous(
+    v: Metashape.Vector,
+) -> Metashape.Vector:
+
+    vh = Metashape.Vector([1.0 for x in range(v.size+1)])
+    for i, x in enumerate(v):
+        vh[i] = x
+
+    return vh
+
+
+def make_inomogenous(
+    vh: Metashape.Vector,
+) -> Metashape.Vector:
+    v = vh / vh[vh.size-1]
+    return v[:v.size-1]

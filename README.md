@@ -1,0 +1,2 @@
+Sandbox for metashape scripts.
+
