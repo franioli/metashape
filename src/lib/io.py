@@ -3,6 +3,7 @@ import numpy as np
 # import pandas as pd
 
 from pathlib import Path
+from typing import List
 
 # from easydict import EasyDict as edict
 
@@ -199,13 +200,41 @@ def read_gcp_file(filename: str,):
             x = line.split(" ")
             gcp = {}
             gcp["world"] = x[0:3]
-            gcp["image"] = x[3:4]
+            gcp["image"] = x[3:4][0]
             gcp["projection"] = x[4:6]
-            gcp["label"] = x[6:7]
+            gcp["label"] = x[6:7][0].rstrip()
             data.append(gcp)
         return data
+
+
+def find_gcp_in_data(data, label):
+    gcps = []
+    for line in data:
+        if line["label"] == label:
+            # print(f'GCP found on image {line['image']}.')
+            print("aaaaa")
+            gcps.append(line)
+            continue
+    print("GCP not found on other images.")
+    return gcps
+
+
+def arrange_gcp(data: dict,) -> List[dict]:
+
+    # for gcp in data:
+    gcp = data[0]
+
+    label = gcp["label"]
+    gcp = find_gcp_in_data(data, label)
+
+    # gcp['world']
+    # pass
+
+    pass
 
 
 if __name__ == "__main__":
     filename = "C:/Users/Francesco/metashape/data/gcps.txt"
     data = read_gcp_file(filename)
+    aa = find_gcp_in_data(data, "T2")
+    print(aa)
