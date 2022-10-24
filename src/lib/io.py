@@ -1,16 +1,18 @@
 import numpy as np
+
 # import pandas as pd
 
 from pathlib import Path
+
 # from easydict import EasyDict as edict
 
 import Metashape
 
-'''Input'''
+"""Input"""
 
 
 def read_opencv_calibration(path):
-    '''
+    """
     Read camera internal orientation from file, save in camera class
     and return them.
     The file must contain the full K matrix and distortion vector,
@@ -20,60 +22,68 @@ def read_opencv_calibration(path):
     white space.
     -------
     Returns:  K, dist
-    '''
+    """
     path = Path(path)
     if not path.exists():
-        print('Error: calibration filed does not exist.')
+        print("Error: calibration filed does not exist.")
         return None, None
-    with open(path, 'r') as f:
+    with open(path, "r") as f:
         data = np.loadtxt(f)
 
     if len(data) == 15:
-        print('Using OPENCV camera model.')
+        print("Using OPENCV camera model.")
         dist = data[11:15].astype(float)
     elif len(data) == 16:
-        print('Using OPENCV camera model + k3')
+        print("Using OPENCV camera model + k3")
         dist = data[11:16].astype(float)
     elif len(data) == 19:
-        print('Using FULL OPENCV camera model')
+        print("Using FULL OPENCV camera model")
         dist = data[11:19].astype(float)
     else:
-        print('invalid intrinsics data.')
+        print("invalid intrinsics data.")
         return None, None
     # TODO: implement other camera models and estimate K from exif.
 
     cam_prm = {}
-    cam_prm['width'] = data[0].astype(int)
-    cam_prm['heigth'] = data[1].astype(int)
-    K = data[2:11].astype(float).reshape(3, 3, order='C')
-    cam_prm['f'] = K[1, 1]
-    cam_prm['cx'] = K[0, 2] - cam_prm['width'] / 2
-    cam_prm['cy'] = K[1, 2] - cam_prm['heigth'] / 2
-    cam_prm['k1'] = dist[0]
-    cam_prm['k2'] = dist[1]
-    cam_prm['p1'] = dist[2]
-    cam_prm['p2'] = dist[3]
+    cam_prm["width"] = data[0].astype(int)
+    cam_prm["heigth"] = data[1].astype(int)
+    K = data[2:11].astype(float).reshape(3, 3, order="C")
+    cam_prm["f"] = K[1, 1]
+    cam_prm["cx"] = K[0, 2] - cam_prm["width"] / 2
+    cam_prm["cy"] = K[1, 2] - cam_prm["heigth"] / 2
+    cam_prm["k1"] = dist[0]
+    cam_prm["k2"] = dist[1]
+    cam_prm["p1"] = dist[2]
+    cam_prm["p2"] = dist[3]
     if len(dist) > 4:
-        cam_prm['k3'] = dist[4]
+        cam_prm["k3"] = dist[4]
     else:
-        cam_prm['k3'] = 0.
+        cam_prm["k3"] = 0.0
     if len(dist) > 5:
-        cam_prm['k4'] = dist[5]
+        cam_prm["k4"] = dist[5]
     else:
-        cam_prm['k4'] = 0.
-    cam_prm['b1'] = 0.
-    cam_prm['b2'] = 0.
+        cam_prm["k4"] = 0.0
+    cam_prm["b1"] = 0.0
+    cam_prm["b2"] = 0.0
 
     return cam_prm
 
 
-'''Output'''
+def read_gcp_file(filename: str,):
+    """
+    <projection>
+    geo_x geo_y geo_z im_x im_y image_name [gcp_name] [extra1] [extra2]
+    """
+
+    pass
 
 
-def write_markers_by_camera(chunk: Metashape.Chunk,
-                            file_name: str,
-                            convert_to_micron: bool = False,
-                            ) -> None:
+"""Output"""
+
+
+def write_markers_by_camera(
+    chunk: Metashape.Chunk, file_name: str, convert_to_micron: bool = False,
+) -> None:
     """ Write Marker image coordinates to csv file,
     sort by camera, as follows:
     cam1, marker1, x, y
@@ -114,23 +124,17 @@ def write_markers_by_camera(chunk: Metashape.Chunk,
                         pixel_size_micron = cur_cam.sensor.pixel_size * 1000
                         image_width = cur_cam.sensor.width
                         image_heigth = cur_cam.sensor.height
-                        xi = (x - image_width/2) * pixel_size_micron[0]
-                        eta = (image_heigth/2 - y) * pixel_size_micron[1]
-                        file.write(
-                            f"{cam_name},{marker_name:5},{xi:8.1f},{eta:8.1f}\n"
-                        )
+                        xi = (x - image_width / 2) * pixel_size_micron[0]
+                        eta = (image_heigth / 2 - y) * pixel_size_micron[1]
+                        file.write(f"{cam_name},{marker_name:5},{xi:8.1f},{eta:8.1f}\n")
                     else:
-                        file.write(
-                            f"{cam_name},{marker_name},{x:.4f},{y:.4f}\n"
-                        )
+                        file.write(f"{cam_name},{marker_name},{x:.4f},{y:.4f}\n")
 
     file.close()
     print("Marker exported successfully")
 
 
-def write_markers_by_marker(chunk: Metashape.Chunk,
-                            file_name: str,
-                            ) -> None:
+def write_markers_by_marker(chunk: Metashape.Chunk, file_name: str,) -> None:
     """ Write Marker image coordinates to csv file,
     sort by camera, as follows:
     marker1, cam1, x, y
@@ -161,9 +165,7 @@ def write_markers_by_marker(chunk: Metashape.Chunk,
     print("Marker exported successfully")
 
 
-def write_marker_world_coordinates(chunk: Metashape.Chunk,
-                                   file_name: str,
-                                   ) -> None:
+def write_marker_world_coordinates(chunk: Metashape.Chunk, file_name: str,) -> None:
     """ Write Marker world coordinates to csv file as:
     marker1, X, Y, Z    
     ... 
@@ -184,3 +186,26 @@ def write_marker_world_coordinates(chunk: Metashape.Chunk,
 
     file.close()
     print("Marker exported successfully")
+
+
+def read_gcp_file(filename: str,):
+    """
+    <projection>
+    geo_x geo_y geo_z im_x im_y image_name [gcp_name] [extra1] [extra2]
+    """
+    with open(filename, encoding="utf-8") as f:
+        data = []
+        for line in f:
+            x = line.split(" ")
+            gcp = {}
+            gcp["world"] = x[0:3]
+            gcp["image"] = x[3:4]
+            gcp["projection"] = x[4:6]
+            gcp["label"] = x[6:7]
+            data.append(gcp)
+        return data
+
+
+if __name__ == "__main__":
+    filename = "C:/Users/Francesco/metashape/data/gcps.txt"
+    data = read_gcp_file(filename)

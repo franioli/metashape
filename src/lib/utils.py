@@ -1,6 +1,8 @@
 import Metashape
+import numpy as np
 
 from typing import List
+from typing import Union
 from pathlib import Path
 
 from lib.io import read_opencv_calibration
@@ -13,6 +15,9 @@ def check_license() -> None:
         raise Exception(
             "No licence found. Please check that you linked your license (floating or standalone) wih the Metashape python module."
         )
+
+
+"""Project"""
 
 
 def save_project(document: Metashape.app.document, project_name: str,) -> None:
@@ -34,7 +39,8 @@ def create_new_chunk(doc: Metashape.app.document, chunk_name: str = None) -> Non
 
 
 def create_new_project(
-    project_name: str, chunk_name: str = None
+    project_name: str, 
+    chunk_name: str = None
 ) -> Metashape.app.document:
 
     doc = Metashape.Document()
@@ -42,6 +48,25 @@ def create_new_project(
     save_project(doc, project_name)
 
     return doc
+
+def cameras_from_bundler(
+    chunk: Metashape.Chunk, 
+    fname: str, 
+    image_list: str,
+) -> None:
+    if image_list:
+        chunk.importCameras(
+            str(fname),
+            format=Metashape.CamerasFormat.CamerasFormatBundler,
+            load_image_list=True,
+            image_list=image_list,
+        )
+        print("Cameras loaded successfully from Bundler .out using image list file.")
+    else:
+        chunk.importCameras(
+            str(fname), format=Metashape.CamerasFormat.CamerasFormatBundler,
+        )
+        print("Cameras loaded successfully from Bundler .out.")
 
 
 """ Get objects"""
@@ -61,12 +86,108 @@ def get_camera(chunk, label):
     return None
 
 
+"""Markers"""
+
+
+def add_markers(
+    chunk: Metashape.Chunk,
+    X: np.ndarray,
+    projections: dict,
+    label: str = None,
+    accuracy: Union[float, np.ndarray] = None
+) -> None:
+
+    # Create Markers given its 3D object coordinates
+    X = Metashape.Vector(X)
+    X_ = chunk.transform.matrix.inv().mulp(X)
+    marker = chunk.addMarker(X_)
+
+    # Add projections on images given image coordinates in a  dictionary, as  {im_name: (x,y)}
+    for k, v in projections.items():
+        cam = get_camera(chunk, k)
+        marker.projections[cam] = Metashape.Marker.Projection(
+            Metashape.Vector(v))
+
+    # If provided, add label and a-priori accuracy
+    if label:
+        marker.label = label
+    if accuracy:
+        marker.reference.accuracy = accuracy
+    marker.enabled = True
+
+
 """Sensors"""
 
 
-def AddSensor(
-    chunk: Metashape.Chunk, fname: str, fix_parameters: bool = True,
+def read_sensor_from_file(
+    fname: str,
+    fix_parameters: bool = True,
 ) -> Metashape.Sensor:
+    ''' Read sensor information from file, containing image size, full K matrix and distortion vector, according to OpenCV standards, and organized in one line, as follow:
+    fx 0. cx 0. fy cy 0. 0. 1. k1, k2, p1, p2, [k3, [k4, k5, k6
+    Values must be float(include the . after integers) and divided by a white space.
+    Parameters
+    ----------
+    fname (str): file path
+    fix_parameters (bool): Fix all parameters
+    -------
+    Returns:  Metashape.Sensor object
+    '''
+    cam_prm = read_opencv_calibration(fname)
+    sensor = Metashape.Sensor
+    sensor.type = Metashape.Sensor.Type.Frame
+    sensor.width = int(cam_prm["width"])
+    sensor.height = int(cam_prm["height"])
+
+    sensor.user_calib.width = cam_prm["width"]
+    sensor.user_calib.height = cam_prm["height"]
+    sensor.user_calib.f = cam_prm["f"]
+    sensor.user_calib.cx = cam_prm["cx"]
+    sensor.user_calib.cy = cam_prm["cy"]
+    sensor.user_calib.k1 = cam_prm["k1"]
+    sensor.user_calib.k2 = cam_prm["k2"]
+    sensor.user_calib.k3 = cam_prm["k3"]
+    sensor.user_calib.k4 = cam_prm["k4"]
+    sensor.user_calib.p1 = cam_prm["p1"]
+    sensor.user_calib.p2 = cam_prm["p2"]
+    sensor.user_calib.b1 = cam_prm["b1"]
+    sensor.user_calib.b2 = cam_prm["b2"]
+    sensor.fixed = fix_parameters
+
+    return sensor
+
+
+def sensors_from_files(
+    sensor_list: List[str],
+    chunk: Metashape.Chunk = None,
+) -> dict:
+    ''' Create sensor dictionary from filenames.
+    Parameters
+    ----------
+    sensor_list (list): 
+    chunk (Metashape.Chunk, default = None): If not None, chunk where to add the sensors.
+    -------
+    Returns: sensors (dict)
+    '''
+    sensors = dict()
+    for id, file in enumerate(sensor_list):
+        s = read_sensor_from_file(chunk, file)
+        s.label = Path(file).stem
+        s.type = Metashape.Sensor.Frame
+        s.fixed = True
+        sensors[id] = s
+        if chunk:
+            chunk.addSensor(s)
+    return sensors
+
+
+def AddSensor(
+    chunk: Metashape.Chunk,
+    fname: str,
+    fix_parameters: bool = True,
+) -> None:
+    ''' Deprecated function. Use sensors_from_files instead.
+    '''
     cam_prm = read_opencv_calibration(fname)
     sensor = chunk.addSensor()
     sensor.type = Metashape.Sensor.Type.Frame
@@ -109,21 +230,6 @@ def AddSensor(
     return sensor
 
 
-def read_sensors_data(sensor_list: List[str],) -> dict:
-
-    sensors = dict()
-    doc = Metashape.Document()
-    chunk = doc.addChunk()
-
-    for id, file in enumerate(sensor_list):
-        s = AddSensor(chunk, file)
-        s.label = Path(file).stem
-        s.type = Metashape.Sensor.Frame
-        s.fixed = True
-        sensors[id] = s
-    return sensors
-
-
 def match_images_sensors(
     chunk: Metashape.Chunk, sensors: dict, camera_table: dict,
 ) -> None:
@@ -131,14 +237,14 @@ def match_images_sensors(
         label = camera_table[cam.label + ".jpg"]
         id = get_sensor_id_by_label(sensors, label)
         if id is not None:
-            CopySensor(cam.sensor, sensors[id])
+            copy_sensor(cam.sensor, sensors[id])
             print(
                 f"Sensor associated. Camera: {cam.label} -> sensor: {label} {id}")
         else:
             raise Exception("Sensor not found.")
 
 
-def CopySensor(
+def copy_sensor(
     s1: Metashape.Sensor, s2: Metashape.Sensor,
 ):
     s1.type = s2.type
@@ -176,11 +282,26 @@ def CopySensor(
     s1.rotation = s2.rotation
 
 
+def copy_camera_estimated_to_reference(
+    chunk: Metashape.Chunk,
+    accuracy: float = 0.000001,
+) -> None:
+    T = chunk.transform.matrix
+    acc = Metashape.Vector((accuracy, accuracy, accuracy))
+    for camera in chunk.cameras:
+        cam_T = T * camera.transform
+        camera.reference.location = cam_T.translation()
+        camera.reference.rotation = cam_T.rotation()
+        camera.reference.rotation_enabled = True
+        camera.reference.accuracy = acc
+
+
 def get_sensor_id_by_label(sensors: List[Metashape.Sensor], sensor_label: str,) -> int:
     for s_id in sensors:
         sensor = sensors[s_id]
         if sensor.label == sensor_label:
             return s_id
+
 
 ''' MISCELLANEOUS
 '''
