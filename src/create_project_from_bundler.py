@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # im_path = Path('/home/francesco/lib/metashape/data/images')
     # bundler_out_path = Path('/home/francesco/lib/metashape/data/belpy.out')
     im_path = Path("C:/Users/Francesco/metashape/data/images")
-    bundler_out_path = Path("C:/Users/Francesco/metashape/data/belpy.out")
+    bundler_out_path = Path("C:/Users/Francesco/metashape/data/belpy_epoch_0.out")
     gcp_filename = "C:/Users/Francesco/metashape/data/gcps.txt"
     im_ext = "jpg"
     gcp_accuracy = [0.01, 0.01, 0.01]
