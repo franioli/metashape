@@ -1,52 +1,59 @@
-import os
 import numpy as np
 import Metashape
 
 from pathlib import Path
-from typing import Union
 
 from lib.utils import (
     create_new_project,
     cameras_from_bundler,
-    get_marker,
-    get_camera,
     add_markers,
     copy_camera_estimated_to_reference,
+    sensors_from_files,
+    match_images_sensors,
 )
+from lib.io import read_gcp_file
 
 if __name__ == "__main__":
 
-    im_ext = "jpg"
     # im_path = Path('/home/francesco/lib/metashape/data/images')
     # bundler_out_path = Path('/home/francesco/lib/metashape/data/belpy.out')
     im_path = Path("C:/Users/Francesco/metashape/data/images")
     bundler_out_path = Path("C:/Users/Francesco/metashape/data/belpy.out")
-
-    X = (49.6488, 192.0875, 71.7466)
-    cams = ["IMG_2814", "IMG_1289"]
-    projections = {
-        cams[0]: (4006.6104, 3543.7073),
-        cams[1]: (1007.1367, 3858.9214),
-    }
-    label = "F2"
-    accuracy = [0.001, 0.001, 0.001]
+    gcp_filename = "C:/Users/Francesco/metashape/data/gcps.txt"
+    im_ext = "jpg"
+    gcp_accuracy = [0.01, 0.01, 0.01]
 
     p = im_path.glob("*." + im_ext)
     images = [str(x) for x in p if x.is_file()]
 
-    chunk = Metashape.app.document.chunk
-    # doc = create_new_project("C:/Users/Francesco/metashape/src/data/test.psx")
+    # SENSOR_LIST = ["p1", "p2"]
+    # IMG_LIST = ["IMG_2814.jpg", "IMG_1289.jpg"]
+    # camera_table = {IMG_LIST[0]: SENSOR_LIST[0], IMG_LIST[1]: SENSOR_LIST[1]}
+
+    # doc = create_new_project("C:/Users/Francesco/metashape/data/test.psx")
     # chunk = doc.chunk
+    chunk = Metashape.app.document.chunk
     chunk.addPhotos(images)
 
+    # Cameras
     cameras_from_bundler(
         chunk=chunk,
         fname=bundler_out_path,
         image_list=str(bundler_out_path.parent / "list.txt"),
     )
+    copy_camera_estimated_to_reference(chunk, accuracy=0.15)
 
-    add_markers(chunk, X, projections, label, accuracy)
+    # GCPs
+    gcps = read_gcp_file(gcp_filename)
+    for point in gcps:
+        add_markers(
+            chunk, point["world"], point["projections"], point["label"], gcp_accuracy
+        )
 
-    # copy_camera_estimated_to_reference(chunk)
+    # Sensor calibraion
+    # sensors = sensors_from_files(
+    #     [f"C:/Users/Francesco/metashape/data/{s}.txt" for s in SENSOR_LIST]
+    #     )
+    # match_images_sensors(chunk, sensors, camera_table)
 
     print("Script ended successfully")

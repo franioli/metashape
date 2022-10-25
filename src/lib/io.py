@@ -1,18 +1,14 @@
 import numpy as np
 
-# import pandas as pd
-
 from pathlib import Path
 from typing import List
-
-# from easydict import EasyDict as edict
 
 import Metashape
 
 """Input"""
 
 
-def read_opencv_calibration(path):
+def read_opencv_calibration(path) -> dict:
     """
     Read camera internal orientation from file, save in camera class
     and return them.
@@ -22,12 +18,12 @@ def read_opencv_calibration(path):
     Values must be float(include the . after integers) and divided by a
     white space.
     -------
-    Returns:  K, dist
+    Returns:  cam_prm (dict)
     """
     path = Path(path)
     if not path.exists():
         print("Error: calibration filed does not exist.")
-        return None, None
+        return None
     with open(path, "r") as f:
         data = np.loadtxt(f)
 
@@ -42,16 +38,16 @@ def read_opencv_calibration(path):
         dist = data[11:19].astype(float)
     else:
         print("invalid intrinsics data.")
-        return None, None
+        return None
     # TODO: implement other camera models and estimate K from exif.
 
     cam_prm = {}
     cam_prm["width"] = data[0].astype(int)
-    cam_prm["heigth"] = data[1].astype(int)
+    cam_prm["height"] = data[1].astype(int)
     K = data[2:11].astype(float).reshape(3, 3, order="C")
     cam_prm["f"] = K[1, 1]
     cam_prm["cx"] = K[0, 2] - cam_prm["width"] / 2
-    cam_prm["cy"] = K[1, 2] - cam_prm["heigth"] / 2
+    cam_prm["cy"] = K[1, 2] - cam_prm["height"] / 2
     cam_prm["k1"] = dist[0]
     cam_prm["k2"] = dist[1]
     cam_prm["p1"] = dist[2]
@@ -70,13 +66,75 @@ def read_opencv_calibration(path):
     return cam_prm
 
 
-def read_gcp_file(filename: str,):
+def read_gcp_file(filename: str, return_raw=False):
+    """ Read GCPs information from .txt file, organized as in OpenDroneMap
+    (https://docs.opendronemap.org/gcp/). The file structure is the following.
+    Input file structure:
+        <projection>
+        geo_x geo_y geo_z im_x im_y image_name [gcp_name] [extra1] [extra2]
+    -------
+    Return: gcps (List[dict]): List of dictionary containing GCPs info organized by marker, as in "arrange_gcp" function.
     """
-    <projection>
-    geo_x geo_y geo_z im_x im_y image_name [gcp_name] [extra1] [extra2]
-    """
+    with open(filename, encoding="utf-8") as f:
+        data = []
+        for line in f:
+            l = line.split(" ")
+            gcp = {}
+            gcp["world"] = np.array([float(x) for x in l[0:3]])
+            gcp["image"] = l[3:4][0]
+            gcp["projection"] = np.array([float(x) for x in l[4:6]])
+            gcp["label"] = l[6:7][0].rstrip()
+            data.append(gcp)
+    gcps = arrange_gcp(data)
+    if return_raw:
+        return (gcps, data)
+    else:
+        return gcps
 
-    pass
+
+def find_gcp_in_data(data, label, verbose=False) -> List[dict]:
+    """ Helpers for collecting together all the projections of the same GCP. It is used by the function arrange_gcp
+    """
+    markers = []
+    for line in data:
+        if line["label"] == label:
+            if verbose:
+                print(f'GCP {label} found in image {line["image"]}.')
+            markers.append(line)
+            continue
+    if not markers:
+        print(f"GCP {label} not found.")
+    return markers
+
+
+def arrange_gcp(data: dict) -> List[dict]:
+    """ Reorganize gcp dictionary strcuture (as given by the function read_gcp_file), in a list of dictionaries, each structured hierarchically by GCP label.
+    The output structure is the following:
+        gcps (list)
+            point (dict)
+                |-label: str
+                |-world: 3x1 np.ndarray -> 3D world coordinates
+                |-projections (dict)
+                    |- image_name1: str -> image 1 name
+                    |- projection1: 2x1 np.ndarray -> projection on image 1
+                    |- image_name2: str -> image 2 name
+                    |- projection2: 2x1 np.ndarray -> projection on image 2
+                    ...
+    """
+    
+    gcps = []
+    for point in data:
+        dummy = find_gcp_in_data(data, label=point["label"])
+        if point["label"] in [x['label'] for x in gcps]:
+            continue 
+        gcps.append(
+            {
+                "label": dummy[0]["label"],
+                "world": dummy[0]["world"],
+                "projections": {x["image"]: tuple(x["projection"]) for x in dummy},
+            }
+        )
+    return gcps
 
 
 """Output"""
@@ -189,52 +247,8 @@ def write_marker_world_coordinates(chunk: Metashape.Chunk, file_name: str,) -> N
     print("Marker exported successfully")
 
 
-def read_gcp_file(filename: str,):
-    """
-    <projection>
-    geo_x geo_y geo_z im_x im_y image_name [gcp_name] [extra1] [extra2]
-    """
-    with open(filename, encoding="utf-8") as f:
-        data = []
-        for line in f:
-            x = line.split(" ")
-            gcp = {}
-            gcp["world"] = x[0:3]
-            gcp["image"] = x[3:4][0]
-            gcp["projection"] = x[4:6]
-            gcp["label"] = x[6:7][0].rstrip()
-            data.append(gcp)
-        return data
-
-
-def find_gcp_in_data(data, label):
-    gcps = []
-    for line in data:
-        if line["label"] == label:
-            # print(f'GCP found on image {line['image']}.')
-            print("aaaaa")
-            gcps.append(line)
-            continue
-    print("GCP not found on other images.")
-    return gcps
-
-
-def arrange_gcp(data: dict,) -> List[dict]:
-
-    # for gcp in data:
-    gcp = data[0]
-
-    label = gcp["label"]
-    gcp = find_gcp_in_data(data, label)
-
-    # gcp['world']
-    # pass
-
-    pass
-
-
 if __name__ == "__main__":
     filename = "C:/Users/Francesco/metashape/data/gcps.txt"
     data = read_gcp_file(filename)
-    aa = find_gcp_in_data(data, "T2")
-    print(aa)
+    gcps = arrange_gcp(data)
+    print(gcps)

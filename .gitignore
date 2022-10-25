@@ -1,6 +1,8 @@
 # UserDefined
 ms-venv/
 test_projects/
+*.psx
+*.files
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
