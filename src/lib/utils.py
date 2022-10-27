@@ -103,7 +103,8 @@ def add_markers(
     # Add projections on images given image coordinates in a  dictionary, as  {im_name: (x,y)}
     for k, v in projections.items():
         cam = get_camera(chunk, k.split(".")[0])
-        marker.projections[cam] = Metashape.Marker.Projection(Metashape.Vector(v))
+        marker.projections[cam] = Metashape.Marker.Projection(
+            Metashape.Vector(v))
 
     # If provided, add label and a-priori accuracy
     if label:
@@ -223,7 +224,8 @@ def match_images_sensors(
         id = get_sensor_id_by_label(sensors, label)
         if id is not None:
             copy_sensor(cam.sensor, sensors[id])
-            print(f"Sensor associated. Camera: {cam.label} -> sensor: {label} {id}")
+            print(
+                f"Sensor associated. Camera: {cam.label} -> sensor: {label} {id}")
         else:
             raise Exception("Sensor not found.")
 
@@ -267,16 +269,31 @@ def copy_sensor(
 
 
 def copy_camera_estimated_to_reference(
-    chunk: Metashape.Chunk, accuracy: float = 0.000001,
+    chunk: Metashape.Chunk,
+    copy_rotations: bool = False,
+    accuracy: List[float] = None,
 ) -> None:
+
+    # Get Chunk transformation matrix
     T = chunk.transform.matrix
-    acc = Metashape.Vector((accuracy, accuracy, accuracy))
+
+    if len(accuracy) == 1:
+        accuracy = Metashape.Vector((accuracy, accuracy, accuracy))
+    elif len(accuracy) != 3:
+        print("Wrong input type for accuracy parameter. Provide a list of floats (it can be a list of a single element or of three elements).")
+        return
+
     for camera in chunk.cameras:
         cam_T = T * camera.transform
         camera.reference.location = cam_T.translation()
-        # camera.reference.rotation = Metashape.utils.mat2ypr(cam_T.rotation())
-        # camera.reference.rotation_enabled = True
-        camera.reference.accuracy = acc
+        camera.reference.enabled = True
+        if copy_rotations:
+            chunk.euler_angles = Metashape.EulerAnglesOPK
+            camera.reference.rotation = Metashape.utils.mat2opk(
+                cam_T.rotation())
+            camera.reference.rotation_enabled = True
+        if accuracy:
+            camera.reference.accuracy = accuracy
 
 
 def get_sensor_id_by_label(sensors: List[Metashape.Sensor], sensor_label: str,) -> int:
@@ -286,8 +303,7 @@ def get_sensor_id_by_label(sensors: List[Metashape.Sensor], sensor_label: str,) 
             return s_id
 
 
-""" MISCELLANEOUS
-"""
+""" MISCELLANEOUS """
 
 
 def make_homogeneous(v: Metashape.Vector,) -> Metashape.Vector:
@@ -302,4 +318,3 @@ def make_homogeneous(v: Metashape.Vector,) -> Metashape.Vector:
 def make_inomogenous(vh: Metashape.Vector,) -> Metashape.Vector:
     v = vh / vh[vh.size - 1]
     return v[: v.size - 1]
-

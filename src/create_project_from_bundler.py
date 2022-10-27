@@ -2,58 +2,117 @@ import numpy as np
 import Metashape
 
 from pathlib import Path
+from easydict import EasyDict as edict
 
 from lib.utils import (
     create_new_project,
+    save_project,
     cameras_from_bundler,
     add_markers,
     copy_camera_estimated_to_reference,
-    sensors_from_files,
-    match_images_sensors,
 )
 from lib.io import read_gcp_file
 
-if __name__ == "__main__":
 
-    # im_path = Path('/home/francesco/lib/metashape/data/images')
-    # bundler_out_path = Path('/home/francesco/lib/metashape/data/belpy.out')
-    im_path = Path("C:/Users/Francesco/metashape/data/images")
-    bundler_out_path = Path("C:/Users/Francesco/metashape/data/belpy_epoch_0.out")
-    gcp_filename = "C:/Users/Francesco/metashape/data/gcps.txt"
-    im_ext = "jpg"
-    gcp_accuracy = [0.01, 0.01, 0.01]
+def create_project(cfg):
 
-    p = im_path.glob("*." + im_ext)
+    # Define project
+    if cfg.create_new_project:
+        doc = create_new_project(str(cfg.new_project_name))
+        chunk = doc.chunk
+    else:
+        chunk = Metashape.app.document.chunk
+
+    # Add images
+    p = cfg.im_path.glob('*.' + cfg.im_ext)
     images = [str(x) for x in p if x.is_file()]
-
-    # SENSOR_LIST = ["p1", "p2"]
-    # IMG_LIST = ["IMG_2814.jpg", "IMG_1289.jpg"]
-    # camera_table = {IMG_LIST[0]: SENSOR_LIST[0], IMG_LIST[1]: SENSOR_LIST[1]}
-
-    # doc = create_new_project("C:/Users/Francesco/metashape/data/test.psx")
-    # chunk = doc.chunk
-    chunk = Metashape.app.document.chunk
     chunk.addPhotos(images)
 
-    # Cameras
+    # Add cameras and tie points from bundler output
     cameras_from_bundler(
         chunk=chunk,
-        fname=bundler_out_path,
-        image_list=str(bundler_out_path.parent / "list.txt"),
+        fname=cfg.bundler_out_path,
+        image_list=str(cfg.bundler_out_path.parent / 'list.txt'),
     )
-    copy_camera_estimated_to_reference(chunk, accuracy=0.15)
 
-    # GCPs
-    gcps = read_gcp_file(gcp_filename)
+    # Fix Camera location to reference
+    if len(cfg.cam_accuracy) == 1:
+        accuracy = Metashape.Vector(
+            (cfg.cam_accuracy, cfg.cam_accuracy, cfg.cam_accuracy))
+    elif len(cfg.cam_accuracy) == 3:
+        accuracy = cfg.cam_accuracy
+    else:
+        print("Wrong input type for accuracy parameter. Provide a list of floats (it can be a list of a single element or of three elements).")
+        return
+    for i, camera in enumerate(chunk.cameras):
+        camera.reference.location = Metashape.Vector(cfg.camera_location[i])
+        camera.reference.accuracy = accuracy
+        camera.reference.enabled = True
+
+        # copy_camera_estimated_to_reference(
+        #     chunk=chunk,
+        #     copy_rotations=False,
+        #     accuracy=cfg.cam_accuracy
+        # )
+
+        # Add GCPs
+    gcps = read_gcp_file(cfg.gcp_filename)
     for point in gcps:
         add_markers(
-            chunk, point["world"], point["projections"], point["label"], gcp_accuracy
+            chunk,
+            point['world'],
+            point['projections'],
+            point['label'],
+            cfg.gcp_accuracy,
         )
 
     # Sensor calibraion
-    # sensors = sensors_from_files(
-    #     [f"C:/Users/Francesco/metashape/data/{s}.txt" for s in SENSOR_LIST]
-    #     )
-    # match_images_sensors(chunk, sensors, camera_table)
+    for i, sensor in enumerate(chunk.sensors):
+        cal = Metashape.Calibration()
+        cal.load(str(cfg.calib_filename[i]))
+        sensor.user_calib = cal
+        sensor.fixed_calibration = True
+        if cfg.prm_to_fix:
+            sensor.fixed_params = cfg.prm_to_fix
+        print(f'sensor {sensor} loaded.')
 
-    print("Script ended successfully")
+    if cfg.optimize_cameras:
+        chunk.optimizeCameras(fit_f=True, tiepoint_covariance=True)
+
+    # Save project
+    if cfg.create_new_project:
+        save_project(doc, str(cfg.new_project_name))
+
+    print('Script ended successfully')
+
+
+if __name__ == '__main__':
+
+    root_dir = Path('/mnt/d/metashape/')
+    # root_dir =  Path('C:/Users/Francesco/metashape/'),
+
+    cfg = edict({
+        'create_new_project': False,  # False,  #
+        'new_project_name': root_dir / 'test.psx',
+
+        'im_path': root_dir / 'data/images/',
+        'bundler_out_path': root_dir / 'data/belpy_epoch_0.out',
+        'gcp_filename': root_dir / 'data/gcps.txt',
+        'calib_filename': [
+            root_dir / 'data/belpy_35mm_280722_selfcal_all.xml',
+            root_dir / 'data/belpy_24mm_280722_selfcal_all.xml',
+        ],
+
+        'im_ext': 'jpg',
+        'camera_location': [
+            [309.261, 301.051, 135.008],    # IMG_1289
+            [151.962, 99.065, 91.643],      # IMG_2814
+        ],
+        'gcp_accuracy': [0.01, 0.01, 0.01],
+        'cam_accuracy': [0.001, 0.001, 0.001],
+        'prm_to_fix': ['Cx', 'Cy', 'B1', 'B2', 'K1', 'K2', 'K3', 'K4', 'P1', 'P2'],
+
+        'optimize_cameras': True,
+    })
+
+    create_project(cfg)

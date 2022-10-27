@@ -3,6 +3,8 @@ ms-venv/
 test_projects/
 *.psx
 *.files
+*.deb
+*.ply
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
