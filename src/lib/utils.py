@@ -22,7 +22,10 @@ def check_license() -> None:
 """ Project """
 
 
-def save_project(document: Metashape.app.document, project_name: str,) -> None:
+def save_project(
+    document: Metashape.app.document,
+    project_name: str,
+) -> None:
     try:
         document.save(project_name)
     except RuntimeError:
@@ -51,7 +54,11 @@ def create_new_project(
     return doc
 
 
-def cameras_from_bundler(chunk: Metashape.Chunk, fname: str, image_list: str,) -> None:
+def cameras_from_bundler(
+    chunk: Metashape.Chunk,
+    fname: str,
+    image_list: str,
+) -> None:
     if image_list:
         chunk.importCameras(
             str(fname),
@@ -62,7 +69,8 @@ def cameras_from_bundler(chunk: Metashape.Chunk, fname: str, image_list: str,) -
         print("Cameras loaded successfully from Bundler .out, using image list file.")
     else:
         chunk.importCameras(
-            str(fname), format=Metashape.CamerasFormat.CamerasFormatBundler,
+            str(fname),
+            format=Metashape.CamerasFormat.CamerasFormatBundler,
         )
         print("Cameras loaded successfully from Bundler .out.")
 
@@ -103,8 +111,7 @@ def add_markers(
     # Add projections on images given image coordinates in a  dictionary, as  {im_name: (x,y)}
     for k, v in projections.items():
         cam = get_camera(chunk, k.split(".")[0])
-        marker.projections[cam] = Metashape.Marker.Projection(
-            Metashape.Vector(v))
+        marker.projections[cam] = Metashape.Marker.Projection(Metashape.Vector(v))
 
     # If provided, add label and a-priori accuracy
     if label:
@@ -118,8 +125,11 @@ def add_markers(
 """Sensors"""
 
 
-def read_sensor_from_file(fname: str, fix_parameters: bool = True,) -> Metashape.Sensor:
-    """ Read sensor information from file, containing image size, full K matrix and distortion vector, according to OpenCV standards, and organized in one line, as follow:
+def read_sensor_from_file(
+    fname: str,
+    fix_parameters: bool = True,
+) -> Metashape.Sensor:
+    """Read sensor information from file, containing image size, full K matrix and distortion vector, according to OpenCV standards, and organized in one line, as follow:
     fx 0. cx 0. fy cy 0. 0. 1. k1, k2, p1, p2, [k3, [k4, k5, k6
     Values must be float(include the . after integers) and divided by a white space.
     Parameters
@@ -150,11 +160,14 @@ def read_sensor_from_file(fname: str, fix_parameters: bool = True,) -> Metashape
     return sensor
 
 
-def sensors_from_files(sensor_list: List[str], chunk: Metashape.Chunk = None,) -> dict:
-    """ Create sensor dictionary from filenames.
+def sensors_from_files(
+    sensor_list: List[str],
+    chunk: Metashape.Chunk = None,
+) -> dict:
+    """Create sensor dictionary from filenames.
     Parameters
     ----------
-    sensor_list (list): 
+    sensor_list (list):
     chunk (Metashape.Chunk, default = None): If not None, chunk where to add the sensors.
     -------
     Returns: sensors (dict)
@@ -171,9 +184,12 @@ def sensors_from_files(sensor_list: List[str], chunk: Metashape.Chunk = None,) -
     return sensors
 
 
-def AddSensor(chunk: Metashape.Chunk, fname: str, fix_parameters: bool = True,) -> None:
-    """ Deprecated function. Use sensors_from_files instead.
-    """
+def AddSensor(
+    chunk: Metashape.Chunk,
+    fname: str,
+    fix_parameters: bool = True,
+) -> None:
+    """Deprecated function. Use sensors_from_files instead."""
     cam_prm = read_opencv_calibration(fname)
     sensor = chunk.addSensor()
     sensor.type = Metashape.Sensor.Type.Frame
@@ -217,21 +233,23 @@ def AddSensor(chunk: Metashape.Chunk, fname: str, fix_parameters: bool = True,) 
 
 
 def match_images_sensors(
-    chunk: Metashape.Chunk, sensors: dict, camera_table: dict,
+    chunk: Metashape.Chunk,
+    sensors: dict,
+    camera_table: dict,
 ) -> None:
     for cam in chunk.cameras:
         label = camera_table[cam.label + ".jpg"]
         id = get_sensor_id_by_label(sensors, label)
         if id is not None:
             copy_sensor(cam.sensor, sensors[id])
-            print(
-                f"Sensor associated. Camera: {cam.label} -> sensor: {label} {id}")
+            print(f"Sensor associated. Camera: {cam.label} -> sensor: {label} {id}")
         else:
             raise Exception("Sensor not found.")
 
 
 def copy_sensor(
-    s1: Metashape.Sensor, s2: Metashape.Sensor,
+    s1: Metashape.Sensor,
+    s2: Metashape.Sensor,
 ):
     s1.type = s2.type
     s1.fixed = s2.fixed
@@ -280,7 +298,9 @@ def copy_camera_estimated_to_reference(
     if len(accuracy) == 1:
         accuracy = Metashape.Vector((accuracy, accuracy, accuracy))
     elif len(accuracy) != 3:
-        print("Wrong input type for accuracy parameter. Provide a list of floats (it can be a list of a single element or of three elements).")
+        print(
+            "Wrong input type for accuracy parameter. Provide a list of floats (it can be a list of a single element or of three elements)."
+        )
         return
 
     for camera in chunk.cameras:
@@ -289,14 +309,16 @@ def copy_camera_estimated_to_reference(
         camera.reference.enabled = True
         if copy_rotations:
             chunk.euler_angles = Metashape.EulerAnglesOPK
-            camera.reference.rotation = Metashape.utils.mat2opk(
-                cam_T.rotation())
+            camera.reference.rotation = Metashape.utils.mat2opk(cam_T.rotation())
             camera.reference.rotation_enabled = True
         if accuracy:
             camera.reference.accuracy = accuracy
 
 
-def get_sensor_id_by_label(sensors: List[Metashape.Sensor], sensor_label: str,) -> int:
+def get_sensor_id_by_label(
+    sensors: List[Metashape.Sensor],
+    sensor_label: str,
+) -> int:
     for s_id in sensors:
         sensor = sensors[s_id]
         if sensor.label == sensor_label:
@@ -306,7 +328,9 @@ def get_sensor_id_by_label(sensors: List[Metashape.Sensor], sensor_label: str,) 
 """ MISCELLANEOUS """
 
 
-def make_homogeneous(v: Metashape.Vector,) -> Metashape.Vector:
+def make_homogeneous(
+    v: Metashape.Vector,
+) -> Metashape.Vector:
 
     vh = Metashape.Vector([1.0 for x in range(v.size + 1)])
     for i, x in enumerate(v):
@@ -315,6 +339,8 @@ def make_homogeneous(v: Metashape.Vector,) -> Metashape.Vector:
     return vh
 
 
-def make_inomogenous(vh: Metashape.Vector,) -> Metashape.Vector:
+def make_inomogenous(
+    vh: Metashape.Vector,
+) -> Metashape.Vector:
     v = vh / vh[vh.size - 1]
     return v[: v.size - 1]
