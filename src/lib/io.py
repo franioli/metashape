@@ -81,8 +81,8 @@ def read_gcp_file(filename: str, return_raw=False):
             l = line.split(" ")
             gcp = {}
             gcp["world"] = np.array([float(x) for x in l[0:3]])
-            gcp["image"] = l[3:4][0]
-            gcp["projection"] = np.array([float(x) for x in l[4:6]])
+            gcp["projection"] = np.array([float(x) for x in l[3:5]])
+            gcp["image"] = l[5:6][0]
             gcp["label"] = l[6:7][0].rstrip()
             data.append(gcp)
     gcps = arrange_gcp(data)
@@ -121,12 +121,12 @@ def arrange_gcp(data: dict) -> List[dict]:
                     |- projection2: 2x1 np.ndarray -> projection on image 2
                     ...
     """
-    
+
     gcps = []
     for point in data:
         dummy = find_gcp_in_data(data, label=point["label"])
         if point["label"] in [x['label'] for x in gcps]:
-            continue 
+            continue
         gcps.append(
             {
                 "label": dummy[0]["label"],
@@ -185,9 +185,11 @@ def write_markers_by_camera(
                         image_heigth = cur_cam.sensor.height
                         xi = (x - image_width / 2) * pixel_size_micron[0]
                         eta = (image_heigth / 2 - y) * pixel_size_micron[1]
-                        file.write(f"{cam_name},{marker_name:5},{xi:8.1f},{eta:8.1f}\n")
+                        file.write(
+                            f"{cam_name},{marker_name:5},{xi:8.1f},{eta:8.1f}\n")
                     else:
-                        file.write(f"{cam_name},{marker_name},{x:.4f},{y:.4f}\n")
+                        file.write(
+                            f"{cam_name},{marker_name},{x:.4f},{y:.4f}\n")
 
     file.close()
     print("Marker exported successfully")

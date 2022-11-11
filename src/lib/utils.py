@@ -44,10 +44,13 @@ def create_new_chunk(doc: Metashape.app.document, chunk_name: str = None) -> Non
 
 
 def create_new_project(
-    project_name: str, chunk_name: str = None
+    project_name: str,
+    chunk_name: str = None,
+    read_only: bool = False,
 ) -> Metashape.app.document:
 
     doc = Metashape.Document()
+    doc.read_only = read_only
     create_new_chunk(doc, chunk_name)
     save_project(doc, project_name)
 
@@ -64,7 +67,7 @@ def cameras_from_bundler(
             str(fname),
             format=Metashape.CamerasFormat.CamerasFormatBundler,
             load_image_list=True,
-            image_list=image_list,
+            image_list=str(image_list),
         )
         print("Cameras loaded successfully from Bundler .out, using image list file.")
     else:
