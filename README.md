@@ -53,7 +53,9 @@ For Linux:
 
 ### Issues
 
-In Metashape, if Python Reach Console does not work and give the following error
+##### Reach Python Consol
+
+In Metashape app, if Reach Python Console does not work and gives the following error
 
 ```bash
 Failed to import qtconsole.inprocess: libffi.so.6: cannot open shared object file: No such file or directory
