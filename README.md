@@ -64,5 +64,5 @@ You need to manually install libffi6 with
 
 ```bash
 wget https://mirrors.kernel.org/ubuntu/pool/main/libf/libffi/libffi6_3.2.1-8_amd64.deb
-sudo apt install libffi6_3.2.1-8_amd64.deb
+sudo apt install ./libffi6_3.2.1-8_amd64.deb
 ```
