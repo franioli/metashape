@@ -5,6 +5,7 @@ test_projects/
 *.files
 *.ply
 data/
+thirdparty/riccardo
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

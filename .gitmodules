@@ -1,6 +1,3 @@
-[submodule "thirdparty/metashape"]
-	path = thirdparty/metashape
-	url = git@github.com:ucdavis/metashape.git
 [submodule "thirdparty/automate-metashape"]
 	path = thirdparty/automate-metashape
 	url = git@github.com:open-forest-observatory/automate-metashape.git
