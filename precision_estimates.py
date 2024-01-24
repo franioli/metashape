@@ -2,22 +2,11 @@ import csv
 import math
 import os
 import random
-
-# Import the functions from func.py
-# add path to Python Path in order to import from src
-import sys
+from pathlib import Path
 
 import Metashape
 
-sys.path.append("src")
-
-from func import (
-    add_cameras_gauss_noise,
-    add_markers_gauss_noise,
-    add_observations_gauss_noise,
-    compute_coordinate_offset,
-    save_sparse,
-)
+from .src import func as ms
 
 NaN = float("NaN")
 
@@ -96,20 +85,7 @@ num_act_cam_orients = sum(act_cam_orient_flags)
 random.seed(1)
 
 # Carry out an initial bundle adjustment to ensure that everything subsequent has a consistent reference starting point.
-chunk.optimizeCameras(
-    fit_f=optimise_intrinsics["f"],
-    fit_cx=optimise_intrinsics["cx"],
-    fit_cy=optimise_intrinsics["cy"],
-    fit_b1=optimise_intrinsics["b1"],
-    fit_b2=optimise_intrinsics["b2"],
-    fit_k1=optimise_intrinsics["k1"],
-    fit_k2=optimise_intrinsics["k2"],
-    fit_k3=optimise_intrinsics["k3"],
-    fit_k4=optimise_intrinsics["k4"],
-    fit_p1=optimise_intrinsics["p1"],
-    fit_p2=optimise_intrinsics["p2"],
-    tiepoint_covariance=True,
-)
+ms.optimise_cameras(chunk, optimise_intrinsics)
 
 # Compute sigma02 for the sparse points
 print("Computing sparse point sigma0...")
@@ -145,7 +121,7 @@ proj = chunk.point_cloud.projections
 #     cam_min.append(round(min(error), 3))
 
 
-save_sparse(
+ms.save_sparse(
     chunk,
     dir_path + "sparse_pts_reference_cov.csv",
     save_color=True,
@@ -156,7 +132,7 @@ save_sparse(
 # If required, calculate the mean point coordinate to use as an offset
 if math.isnan(pts_offset[0]):
     # TODO: test this function with UTM coordinates
-    pts_offset = compute_coordinate_offset(chunk)
+    pts_offset = ms.compute_coordinate_offset(chunk)
 
 # Save the used offset to text file
 with open(dir_path + "_coordinate_local_origin.txt", "w") as f:
@@ -306,8 +282,8 @@ doc.read_only = False
 file_idx = 1
 
 # Make the ouput directory if it doesn't exist
-dir_path = dir_path + "_Monte_Carlo_output/"
-os.makedirs(dir_path, exist_ok=True)
+dir_path = Path(dir_path + "_Monte_Carlo_output/")
+dir_path.mkdir(parents=True, exist_ok=True)
 
 # Main set of nested loops which control the repeated bundle adjustment
 for line_ID in range(0, num_randomisations):
@@ -319,13 +295,13 @@ for line_ID in range(0, num_randomisations):
 
     # Reset the camera coordinates if they are used for georeferencing
     if num_act_cam_orients > 0:
-        add_cameras_gauss_noise(chunk)
+        ms.add_cameras_gauss_noise(chunk)
 
     # add noise to the marker locations
-    add_markers_gauss_noise(chunk)
+    ms.add_markers_gauss_noise(chunk)
 
     # add noise to the observations
-    add_observations_gauss_noise(chunk)
+    ms.add_observations_gauss_noise(chunk)
 
     # Construct the output file names
     out_file = f"{file_idx:04d}_MA{chunk.marker_location_accuracy[0]:0.5f}_PA{chunk.marker_projection_accuracy:0.5f}_TA{chunk.tiepoint_accuracy:0.5f}_NAM{num_act_markers:03d}_LID{line_ID + 1:03d}"
@@ -335,35 +311,19 @@ for line_ID in range(0, num_randomisations):
     print(out_gc_file)
 
     # Bundle adjustment
-    chunk.optimizeCameras(
-        fit_f=optimise_intrinsics["f"],
-        fit_cx=optimise_intrinsics["cx"],
-        fit_cy=optimise_intrinsics["cy"],
-        fit_b1=optimise_intrinsics["b1"],
-        fit_b2=optimise_intrinsics["b2"],
-        fit_k1=optimise_intrinsics["k1"],
-        fit_k2=optimise_intrinsics["k2"],
-        fit_k3=optimise_intrinsics["k3"],
-        fit_k4=optimise_intrinsics["k4"],
-        fit_p1=optimise_intrinsics["p1"],
-        fit_p2=optimise_intrinsics["p2"],
-        tiepoint_covariance=True,
-    )
+    ms.optimise_cameras(chunk, optimise_intrinsics)
 
     # Export the control (catch and deal with legacy syntax)
-    try:
-        chunk.exportReference(
-            dir_path + out_gc_file,
-            Metashape.ReferenceFormatCSV,
-            items=Metashape.ReferenceItemsMarkers,
-        )
-        chunk.exportReference(
-            dir_path + out_cams_c_file,
-            Metashape.ReferenceFormatCSV,
-            items=Metashape.ReferenceItemsCameras,
-        )
-    except:
-        chunk.exportReference(dir_path + out_gc_file, "csv")
+    chunk.exportReference(
+        dir_path + out_gc_file,
+        Metashape.ReferenceFormatCSV,
+        items=Metashape.ReferenceItemsMarkers,
+    )
+    chunk.exportReference(
+        dir_path + out_cams_c_file,
+        Metashape.ReferenceFormatCSV,
+        items=Metashape.ReferenceItemsCameras,
+    )
 
     # Export the cameras
     chunk.exportCameras(
@@ -396,16 +356,3 @@ for line_ID in range(0, num_randomisations):
     # Save the project
     doc.read_only = False
     doc.save()
-
-    # Temporary disable scalebars
-    # # Reset the scalebar lengths and add noise
-    # for scalebarIDx, scalebar in enumerate(chunk.scalebars):
-    #     if scalebar.reference.distance:
-    #         if not scalebar.reference.accuracy:
-    #             scalebar.reference.distance = original_chunk.scalebars[
-    #                 scalebarIDx
-    #             ].reference.distance + random.gauss(0, chunk.scalebar_accuracy)
-    #         else:
-    #             scalebar.reference.distance = original_chunk.scalebars[
-    #                 scalebarIDx
-    #             ].reference.distance + random.gauss(0, scalebar.reference.accuracy)

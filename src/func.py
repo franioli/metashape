@@ -86,6 +86,23 @@ def save_sparse(
             f.write(f"{sep.join([str(x) for x in line])}\n")
 
 
+def optimize_cameras(chunk: Metashape.Chunk, params: dict) -> None:
+    chunk.optimizeCameras(
+        fit_f=params["f"],
+        fit_cx=params["cx"],
+        fit_cy=params["cy"],
+        fit_b1=params["b1"],
+        fit_b2=params["b2"],
+        fit_k1=params["k1"],
+        fit_k2=params["k2"],
+        fit_k3=params["k3"],
+        fit_k4=params["k4"],
+        fit_p1=params["p1"],
+        fit_p2=params["p2"],
+        tiepoint_covariance=True,
+    )
+
+
 def compute_coordinate_offset(chunk: Metashape.Chunk):
     crs = chunk.crs
     if crs is None:
