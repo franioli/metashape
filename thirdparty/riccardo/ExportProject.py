@@ -5,10 +5,10 @@ import math
 import tkinter
 from tkinter import EXCEPTION, filedialog
 from PySide2 import QtGui, QtCore, QtWidgets
- 
-class ExportProjectDlg(QtWidgets.QDialog):
 
-    def __init__ (self, parent):
+
+class ExportProjectDlg(QtWidgets.QDialog):
+    def __init__(self, parent):
         QtWidgets.QDialog.__init__(self, parent)
         self.setWindowTitle("Export Project")
 
@@ -18,39 +18,42 @@ class ExportProjectDlg(QtWidgets.QDialog):
         # creating layout
         layout = QtWidgets.QGridLayout()
         layout.setSpacing(10)
-        
+
         layout.addWidget(self.btnP1, 2, 0)
         layout.addWidget(self.btnQuit, 2, 1)
-        self.setLayout(layout)  
+        self.setLayout(layout)
 
         QtCore.QObject.connect(self.btnP1, QtCore.SIGNAL("clicked()"), self.export_prj)
-        QtCore.QObject.connect(self.btnQuit, QtCore.SIGNAL("clicked()"), self, QtCore.SLOT("reject()"))    
+        QtCore.QObject.connect(
+            self.btnQuit, QtCore.SIGNAL("clicked()"), self, QtCore.SLOT("reject()")
+        )
 
         self.exec()
 
     def export_prj(self):
-
         app = QtWidgets.QApplication.instance()
         filename = Metashape.app.getSaveFileName("Specify the export file:")
         if not filename:
-            print("Script aborted: invalid output file.")    
+            print("Script aborted: invalid output file.")
             return 0
 
         print("Script started...")
         export(filename)
         print("Script finished. Project exported to " + filename)
-        return 1 
+        return 1
+
 
 def export_project():
     app = QtWidgets.QApplication.instance()
     parent = app.activeWindow()
     dlg = ExportProjectDlg(parent)
 
-#def isMasterSensor(sensor):
+
+# def isMasterSensor(sensor):
 #    isMaster = sensor.master == sensor;
 #    return 1 if (isMaster) else 0;
 
-#def export(filename):
+# def export(filename):
 #    doc = Metashape.app.document
 #    chunk1 = doc.chunk
 
@@ -87,10 +90,10 @@ def export_project():
 #            if (not (isMasterSensor(sensor))):
 #                f.write("Master sensor:\t{:d}\n".format(sensor.master.key))
 #                R = Metashape.Utils.mat2opk(sensor.rotation)
-#                f.write("{:.8f}\t{:.8f}\t{:.8f}\n".format(sensor.location.x, sensor.location.y, sensor.location.z))                
+#                f.write("{:.8f}\t{:.8f}\t{:.8f}\n".format(sensor.location.x, sensor.location.y, sensor.location.z))
 #                f.write("{:.8f}\t{:.8f}\t{:.8f}\n".format(R.x, R.y, R.z))
 #                if (not (sensor.reference.location is None or sensor.reference.rotation is None)):
-#                    f.write("{:.8f}\t{:.8f}\t{:.8f}\n".format(sensor.reference.location.x, sensor.reference.location.y, sensor.reference.location.z))                
+#                    f.write("{:.8f}\t{:.8f}\t{:.8f}\n".format(sensor.reference.location.x, sensor.reference.location.y, sensor.reference.location.z))
 #                    f.write("{:.8f}\t{:.8f}\t{:.8f}\n".format(sensor.reference.rotation.x, sensor.reference.rotation.y, sensor.reference.rotation.z))
 
 
@@ -126,7 +129,7 @@ def export_project():
 #            if not camera.type == Metashape.Camera.Type.Regular: #skipping camera track keyframes
 #                continue
 #            if not camera.transform: #skipping NA cameras
-#                continue  
+#                continue
 #            for proj in projections[camera]:
 #                track_id = proj.track_id
 #                point_id = point_ids[track_id]
@@ -135,7 +138,7 @@ def export_project():
 #                if not points[point_id].valid:
 #                    continue
 #                f.write("ImagePoint:\t{:s}\t{:d}\t{:d}\t{:.8f}\t{:.8f}\n".format(camera.label, camera.key, track_id, proj.coord.x, proj.coord.y))
-    
+
 #        f.write("################  MARKER LIST  ################\n")
 #        for marker in chunk1.markers:
 #            f.write("{:s}\t{:d}\t{:s}\n".format(marker.label, marker.key, str(marker.reference.enabled)))

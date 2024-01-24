@@ -1,10 +1,10 @@
 # UserDefined
-ms-venv/
+ms_venv/
 test_projects/
 *.psx
 *.files
-*.deb
 *.ply
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

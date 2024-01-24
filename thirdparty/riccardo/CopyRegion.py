@@ -2,6 +2,7 @@ import Metashape
 import sys
 import os
 
+
 def copy_region():
     doc = Metashape.app.document
     region = doc.chunk.region

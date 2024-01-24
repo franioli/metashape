@@ -53,7 +53,7 @@ For Linux:
 
 ### Issues
 
-##### Reach Python Consol
+##### Reach Python Console
 
 In Metashape app, if Reach Python Console does not work and gives the following error
 
