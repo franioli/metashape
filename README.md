@@ -41,6 +41,8 @@ Check if the new environmental variable is present:
 printenv | grep agisoft
 ```
 
+Refer to [this guide](https://agisoft.freshdesk.com/support/solutions/articles/31000169378--metashape-2-x-linking-client-machine-to-the-license-server).
+
 ### Install external modules in Metashape built-in pyhton environment
 
 Follow the official guide [https://agisoft.freshdesk.com/support/solutions/articles/31000136860-how-to-install-external-python-module-to-metashape-professional-package](https://agisoft.freshdesk.com/support/solutions/articles/31000136860-how-to-install-external-python-module-to-metashape-professional-package)
